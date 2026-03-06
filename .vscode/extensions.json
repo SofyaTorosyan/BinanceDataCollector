@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "xaver.clang-format",
+    "hbenl.vscode-test-explorer",
+    "yzhang.markdown-all-in-one",
+    "ms-vscode.cpptools",
+    "ms-vscode.cpptools-extension-pack",
+    "ms-vscode.cmake-tools",
+    "streetsidesoftware.code-spell-checker"
+  ]
+}
