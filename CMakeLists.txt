@@ -3,3 +3,5 @@ project(BinanceDataCollector VERSION 0.1.0 LANGUAGES C CXX)
 
 add_executable(BinanceDataCollector main.cpp)
 
+add_subdirectory(tests)
+
