@@ -3,5 +3,6 @@
   "[cpp]": {
     "editor.defaultFormatter": "xaver.clang-format"
   },
-  "files.autoSave": "onFocusChange"
+  "files.autoSave": "onFocusChange",
+  "cSpell.words": ["nlohmann"]
 }
