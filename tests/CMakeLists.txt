@@ -17,3 +17,16 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 include(GoogleTest)
 gtest_discover_tests(${PROJECT_NAME})
+
+# Integration tests — require real network access to Binance.
+# Run separately: ./build/tests/Release/BinanceIntegrationTests.exe
+add_executable(BinanceIntegrationTests
+    network/BinanceWebSocketClientIntegrationTests.cpp
+)
+
+target_link_libraries(BinanceIntegrationTests PRIVATE
+    GTest::gtest_main
+    lib-network
+)
+
+gtest_discover_tests(BinanceIntegrationTests)
