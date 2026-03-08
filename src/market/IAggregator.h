@@ -2,6 +2,7 @@
 #include "TradeEvent.h"
 #include "WindowStats.h"
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace bdc::market
@@ -14,5 +15,7 @@ public:
     virtual void addTrade(const TradeEvent& event) = 0;
     virtual std::vector<bdc::serialization::WindowStats> popCompletedWindows(int64_t nowMs) = 0;
 };
+
+using IAggregatorPtr = std::shared_ptr<IAggregator>;
 
 } // namespace bdc::market

@@ -60,7 +60,7 @@ TEST(BinanceWebSocketClientIntegrationTest, ConnectsAndReceivesMessage)
         << "Timed out waiting for a message from Binance";
 }
 
-TEST(BinanceWebSocketClientIntegrationTest, ConnectsAndReceivesMessage10Messages)
+TEST(BinanceWebSocketClientIntegrationTest, ConnectsAndReceives10Messages)
 {
     std::atomic<int> received{0};
     std::mutex mtx;

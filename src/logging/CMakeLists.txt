@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10.0)
-project(lib-logger)
+project(lib-logging)
 
 find_package(spdlog REQUIRED)
 

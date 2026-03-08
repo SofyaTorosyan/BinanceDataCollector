@@ -2,6 +2,7 @@
 
 #include "WindowStats.h"
 #include <vector>
+#include <memory>
 
 namespace bdc::serialization
 {
@@ -13,5 +14,7 @@ public:
     // Windows with trades == 0 are silently skipped.
     virtual void write(const std::vector<WindowStats>& windows) = 0;
 };
+
+using ISerializerPtr = std::shared_ptr<ISerializer>;
 
 } // namespace bdc::serialization

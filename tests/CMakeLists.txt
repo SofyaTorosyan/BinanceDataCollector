@@ -15,7 +15,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     GTest::gtest_main
     GTest::gmock
     lib-config
-    lib-logger
+    lib-logging
     lib-market
     lib-serialization
 )

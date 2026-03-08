@@ -2,6 +2,7 @@
 #include "LogLevel.h"
 #include <format>
 #include <string_view>
+#include <memory>
 
 namespace bdc::logging
 {
@@ -52,5 +53,7 @@ public:
         log(LogLevel::critical, std::format(fmt, std::forward<Args>(args)...));
     }
 };
+
+using ILoggerPtr = std::shared_ptr<ILogger>;
 
 } // namespace bdc::logging
