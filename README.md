@@ -14,11 +14,6 @@ conan install --build=missing
 ```bash
 cmake -S . --preset conan-release
 ```
-#### Windows
-```bash
-cmake -S . --preset conan-default
-```
-
 
 ### Build
 
