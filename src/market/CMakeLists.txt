@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.10.0)
 project(lib-market)
 
-add_library(${PROJECT_NAME} INTERFACE)
 
-target_include_directories(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(${PROJECT_NAME}
+    TradeAggregator.cpp
+)
 
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(${PROJECT_NAME} PUBLIC lib-serialization)

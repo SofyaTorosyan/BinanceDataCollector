@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <iostream>
 #include <mutex>
 #include <string>
 
@@ -41,6 +42,36 @@ TEST(BinanceWebSocketClientIntegrationTest, ConnectsAndReceivesMessage)
         [&](const std::string&)
         {
             if (!received.exchange(true))
+            {
+                std::lock_guard lk(mtx);
+                cv.notify_one();
+            }
+        });
+
+    client.connect();
+
+    EXPECT_TRUE(waitFor(
+        mtx,
+        cv,
+        [&]
+        {
+            return received.load();
+        }))
+        << "Timed out waiting for a message from Binance";
+}
+
+TEST(BinanceWebSocketClientIntegrationTest, ConnectsAndReceivesMessage10Messages)
+{
+    std::atomic<int> received{0};
+    std::mutex mtx;
+    std::condition_variable cv;
+
+    BinanceWebSocketClient client(host, port, target);
+    client.setMessageHandler(
+        [&](const std::string& message)
+        {
+            std::cout << std::format("Received message: {}\n", message);
+            if (received.fetch_add(1) >= 10)
             {
                 std::lock_guard lk(mtx);
                 cv.notify_one();

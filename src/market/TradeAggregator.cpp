@@ -1,0 +1,59 @@
+#include "TradeAggregator.h"
+#include <algorithm>
+
+namespace bdc::market
+{
+
+TradeAggregator::TradeAggregator(const int windowMs) : m_windowMs(windowMs)
+{
+}
+
+void TradeAggregator::addTrade(const TradeEvent& event)
+{
+    int64_t windowStartMs = (event.tradeTimeMs / m_windowMs) * m_windowMs;
+    WindowKey key{event.symbol, windowStartMs};
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+    auto& stats = m_windows[key];
+
+    if (stats.trades == 0)
+    {
+        stats.symbol = event.symbol;
+        stats.windowStartMs = windowStartMs;
+    }
+    stats.trades++;
+    stats.volume += event.quantity;
+    stats.minPrice = std::min(stats.minPrice, event.price);
+    stats.maxPrice = std::max(stats.maxPrice, event.price);
+    // isBuyerMaker=true means the buyer is the passive side → aggressive side is the seller
+    if (event.isBuyerMaker)
+    {
+        stats.sellCount++;
+    }
+    else
+    {
+        stats.buyCount++;
+    }
+}
+
+std::vector<bdc::serialization::WindowStats> TradeAggregator::popCompletedWindows(int64_t nowMs)
+{
+    std::vector<bdc::serialization::WindowStats> result;
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    for (auto it = m_windows.begin(); it != m_windows.end();)
+    {
+        if (it->first.windowStartMs + m_windowMs <= nowMs)
+        {
+            result.push_back(it->second);
+            it = m_windows.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+    return result;
+}
+
+} // namespace bdc::market

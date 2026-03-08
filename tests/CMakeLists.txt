@@ -7,6 +7,7 @@ find_package(GTest REQUIRED)
 add_executable(${PROJECT_NAME}
     config/ConfigLoaderTests.cpp
     logging/LoggerTests.cpp
+    market/TradeAggregatorTests.cpp
     serialization/FileSerializerTests.cpp
 )
 
@@ -15,6 +16,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     GTest::gmock
     lib-config
     lib-logger
+    lib-market
     lib-serialization
 )
 
