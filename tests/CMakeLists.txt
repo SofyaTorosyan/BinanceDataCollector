@@ -7,6 +7,7 @@ find_package(GTest REQUIRED)
 add_executable(${PROJECT_NAME}
     config/ConfigLoaderTests.cpp
     logging/LoggerTests.cpp
+    market/MonitoringServiceTests.cpp
     market/TradeAggregatorTests.cpp
     serialization/FileSerializerTests.cpp
 )
@@ -17,6 +18,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     lib-config
     lib-logging
     lib-market
+    lib-network
     lib-serialization
 )
 

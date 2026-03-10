@@ -108,7 +108,9 @@ void BinanceWebSocketClient::doConnect()
 void BinanceWebSocketClient::scheduleReconnect()
 {
     if (m_intentionalDisconnect)
+    {
         return;
+    }
 
     m_logger->info("Reconnecting in {}ms...", m_reconnectDelayMs);
     m_reconnectTimer.expires_after(std::chrono::milliseconds(m_reconnectDelayMs));
