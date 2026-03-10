@@ -32,6 +32,7 @@ add_executable(BinanceIntegrationTests
 target_link_libraries(BinanceIntegrationTests PRIVATE
     GTest::gtest_main
     lib-network
+    lib-config
 )
 
 gtest_discover_tests(BinanceIntegrationTests)

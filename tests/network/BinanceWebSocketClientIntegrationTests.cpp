@@ -1,3 +1,4 @@
+#include "AppConfig.h"
 #include "BinanceWebSocketClient.h"
 #include "ILogger.h"
 #include <gtest/gtest.h>
@@ -17,6 +18,11 @@ class NullLogger : public bdc::logging::ILogger
 public:
     void log(bdc::logging::LogLevel, std::string_view) override {}
 };
+
+auto makeConfig()
+{
+    return std::make_shared<bdc::config::AppConfig>();
+}
 
 constexpr auto host = "stream.binance.com";
 constexpr auto port = "9443";
@@ -44,7 +50,7 @@ TEST(BinanceWebSocketClientIntegrationTest, ConnectsAndReceivesMessage)
     std::mutex mtx;
     std::condition_variable cv;
 
-    BinanceWebSocketClient client(std::make_shared<NullLogger>());
+    BinanceWebSocketClient client(makeConfig(), std::make_shared<NullLogger>());
     client.setMessageHandler(
         [&](const std::string&)
         {
@@ -73,7 +79,7 @@ TEST(BinanceWebSocketClientIntegrationTest, ConnectsAndReceives10Messages)
     std::mutex mtx;
     std::condition_variable cv;
 
-    BinanceWebSocketClient client(std::make_shared<NullLogger>());
+    BinanceWebSocketClient client(makeConfig(), std::make_shared<NullLogger>());
     client.setMessageHandler(
         [&](const std::string& message)
         {
@@ -105,7 +111,7 @@ TEST(BinanceWebSocketClientIntegrationTest, ReceivedMessageIsNonEmptyJson)
     std::mutex mtx;
     std::condition_variable cv;
 
-    BinanceWebSocketClient client(std::make_shared<NullLogger>());
+    BinanceWebSocketClient client(makeConfig(), std::make_shared<NullLogger>());
     client.setMessageHandler(
         [&](const std::string& msg)
         {
@@ -139,7 +145,7 @@ TEST(BinanceWebSocketClientIntegrationTest, DisconnectsCleanly)
     std::mutex mtx;
     std::condition_variable cv;
 
-    BinanceWebSocketClient client(std::make_shared<NullLogger>());
+    BinanceWebSocketClient client(makeConfig(), std::make_shared<NullLogger>());
     client.setMessageHandler(
         [&](const std::string&)
         {
@@ -170,7 +176,7 @@ TEST(BinanceWebSocketClientIntegrationTest, ErrorHandlerCalledOnInvalidHost)
     std::mutex mtx;
     std::condition_variable cv;
 
-    BinanceWebSocketClient client(std::make_shared<NullLogger>());
+    BinanceWebSocketClient client(makeConfig(), std::make_shared<NullLogger>());
     client.setErrorHandler(
         [&](const std::string&)
         {

@@ -1,4 +1,5 @@
 #pragma once
+#include "AppConfig.h"
 #include "ILogger.h"
 #include "IWebSocketClient.h"
 
@@ -6,6 +7,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/ssl.hpp>
@@ -21,7 +23,7 @@ namespace bdc::network {
 
 class BinanceWebSocketClient : public IWebSocketClient {
 public:
-    explicit BinanceWebSocketClient(logging::ILoggerPtr logger);
+    BinanceWebSocketClient(config::AppConfigPtr config, logging::ILoggerPtr logger);
     ~BinanceWebSocketClient() override;
 
     void connect(std::string host, std::string port, std::string target) override;
@@ -34,6 +36,8 @@ private:
         boost::beast::ssl_stream<boost::beast::tcp_stream>>;
     using Strand = boost::asio::strand<boost::asio::io_context::executor_type>;
 
+    void doConnect();
+    void scheduleReconnect();
     void onResolve(boost::beast::error_code ec,
                    boost::asio::ip::tcp::resolver::results_type results);
     void onConnect(boost::beast::error_code ec,
@@ -48,20 +52,24 @@ private:
     std::string m_port;
     std::string m_target;
 
-    boost::asio::io_context                                        m_ioc;
-    boost::asio::ssl::context                                      m_sslCtx;
-    Strand                                                         m_strand;
+    boost::asio::io_context                                                  m_ioc;
+    boost::asio::ssl::context                                                m_sslCtx;
+    Strand                                                                   m_strand;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_workGuard;
+    boost::asio::steady_timer                                                m_reconnectTimer;
 
     boost::asio::ip::tcp::resolver m_resolver;
     std::unique_ptr<WsStream>      m_ws;
     boost::beast::flat_buffer      m_buffer;
 
-    logging::ILoggerPtr m_logger;
-    MessageHandler      m_messageHandler;
-    ErrorHandler        m_errorHandler;
-    std::atomic<bool>   m_connected{false};
-    std::thread         m_ioThread;
+    config::AppConfigPtr m_config;
+    logging::ILoggerPtr  m_logger;
+    MessageHandler       m_messageHandler;
+    ErrorHandler         m_errorHandler;
+    std::atomic<bool>    m_connected{false};
+    std::atomic<bool>    m_intentionalDisconnect{false};
+    int64_t              m_reconnectDelayMs{1000};
+    std::thread          m_ioThread;
 };
 
 } // namespace bdc::network
