@@ -14,6 +14,7 @@ public:
 
     void addTrade(const TradeEvent& event) override;
     std::vector<bdc::serialization::WindowStats> popCompletedWindows(int64_t nowMs) override;
+    std::vector<bdc::serialization::WindowStats> popAllWindows() override;
 
 private:
     struct WindowKey

@@ -56,4 +56,15 @@ std::vector<bdc::serialization::WindowStats> TradeAggregator::popCompletedWindow
     return result;
 }
 
+std::vector<bdc::serialization::WindowStats> TradeAggregator::popAllWindows()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    std::vector<bdc::serialization::WindowStats> result;
+    result.reserve(m_windows.size());
+    for (auto& [key, stats] : m_windows)
+        result.push_back(std::move(stats));
+    m_windows.clear();
+    return result;
+}
+
 } // namespace bdc::market

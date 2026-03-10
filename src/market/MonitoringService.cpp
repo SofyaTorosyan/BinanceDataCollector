@@ -50,6 +50,15 @@ void MonitoringService::stopMonitoring()
     m_timerIoc.stop();
     if (m_timerThread.joinable())
         m_timerThread.join();
+
+    try
+    {
+        m_serializer->write(m_aggregator->popAllWindows());
+    }
+    catch (const std::exception& e)
+    {
+        m_logger->error("Final flush error: {}", e.what());
+    }
 }
 
 void MonitoringService::scheduleFlush()

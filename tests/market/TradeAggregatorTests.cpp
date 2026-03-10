@@ -251,4 +251,37 @@ TEST_F(TradeAggregatorTest, MultipleCompletedWindowsReturnedAtOnce)
     ASSERT_EQ(result.size(), 3u);
 }
 
+// --- popAllWindows ---
+
+TEST_F(TradeAggregatorTest, PopAllWindows_EmptyAggregator_ReturnsEmpty)
+{
+    EXPECT_TRUE(m_agg.popAllWindows().empty());
+}
+
+TEST_F(TradeAggregatorTest, PopAllWindows_ReturnsIncompleteWindow)
+{
+    m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 500));
+    // Window [0,1000) is not yet complete at nowMs=999, but popAllWindows returns it anyway.
+    auto result = m_agg.popAllWindows();
+    ASSERT_EQ(result.size(), 1u);
+    EXPECT_EQ(result[0].symbol, "BTCUSDT");
+}
+
+TEST_F(TradeAggregatorTest, PopAllWindows_ClearsAggregator)
+{
+    m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 0));
+    m_agg.popAllWindows();
+    EXPECT_TRUE(m_agg.popAllWindows().empty());
+    EXPECT_TRUE(m_agg.popCompletedWindows(99999).empty());
+}
+
+TEST_F(TradeAggregatorTest, PopAllWindows_ReturnsAllSymbolsAndWindows)
+{
+    m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 0));
+    m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 1000)); // second window
+    m_agg.addTrade(makeTrade("ETHUSDT", 200.0, 1.0, 0));
+    auto result = m_agg.popAllWindows();
+    EXPECT_EQ(result.size(), 3u);
+}
+
 } // namespace
