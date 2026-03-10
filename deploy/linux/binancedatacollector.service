@@ -1,0 +1,41 @@
+[Unit]
+Description=Binance Market Data Collector
+Documentation=https://github.com/your-org/BinanceDataCollector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# Run as a dedicated non-root user for security.
+# Create with: sudo useradd -r -s /sbin/nologin bdc
+User=bdc
+Group=bdc
+
+# Working directory must contain config.json and is where output files are written.
+WorkingDirectory=/opt/bdc
+
+ExecStart=/opt/bdc/BinanceDataCollector
+
+# Restart on any failure (exit code != 0, signal, watchdog timeout).
+Restart=on-failure
+RestartSec=5s
+
+# Cap the restart rate: no more than 5 restarts in 60 s before systemd gives up.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Give the process 30 s to shut down gracefully on SIGTERM before SIGKILL.
+TimeoutStopSec=30
+
+# Hard limits — prevents a runaway process from exhausting system resources.
+LimitNOFILE=65536
+MemoryMax=256M
+
+# Write stdout/stderr to the system journal (view with: journalctl -u binancedatacollector -f).
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=binancedatacollector
+
+[Install]
+WantedBy=multi-user.target

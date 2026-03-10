@@ -236,7 +236,7 @@ void BinanceWebSocketClient::onRead(beast::error_code ec, std::size_t /*bytes*/)
 
 void BinanceWebSocketClient::reportError(const std::string& msg)
 {
-    m_logger->error("{}", msg);
+    m_logger->error("BinanceWebSocketClient error: {}", msg);
     if (m_errorHandler)
     {
         m_errorHandler(msg);
