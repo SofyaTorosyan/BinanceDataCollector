@@ -22,7 +22,7 @@ void TradeAggregator::addTrade(const TradeEvent& event)
         stats.windowStartMs = windowStartMs;
     }
     stats.trades++;
-    stats.volume += event.quantity;
+    stats.volume += event.price * event.quantity;
     stats.minPrice = std::min(stats.minPrice, event.price);
     stats.maxPrice = std::max(stats.maxPrice, event.price);
     // isBuyerMaker=true means the buyer is the passive side → aggressive side is the seller

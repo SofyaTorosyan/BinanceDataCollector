@@ -118,11 +118,12 @@ TEST_F(TradeAggregatorTest, TradesCountAccumulates)
 
 TEST_F(TradeAggregatorTest, VolumeAccumulates)
 {
+    // volume = sum(price * quantity): 100.0*1.5 + 100.0*2.5 = 400.0
     m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.5, 0));
     m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 2.5, 100));
     auto result = m_agg.popCompletedWindows(1000);
     ASSERT_EQ(result.size(), 1u);
-    EXPECT_DOUBLE_EQ(result[0].volume, 4.0);
+    EXPECT_DOUBLE_EQ(result[0].volume, 400.0);
 }
 
 TEST_F(TradeAggregatorTest, MinPriceTracked)
