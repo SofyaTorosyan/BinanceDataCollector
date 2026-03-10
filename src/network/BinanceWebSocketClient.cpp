@@ -14,6 +14,7 @@ namespace bdc::network
 namespace
 {
 constexpr int64_t InitialReconnectDelayMs = 1000;
+constexpr int64_t WsIdleTimeoutSec        = 30;
 } // namespace
 
 BinanceWebSocketClient::BinanceWebSocketClient(
@@ -176,7 +177,11 @@ void BinanceWebSocketClient::onSslHandshake(beast::error_code ec)
     // Disable TCP timeout for the long-lived WebSocket connection.
     beast::get_lowest_layer(*m_ws).expires_never();
 
-    m_ws->set_option(beast::websocket::stream_base::timeout::suggested(beast::role_type::client));
+    beast::websocket::stream_base::timeout wsTimeout;
+    wsTimeout.handshake_timeout = std::chrono::seconds(30);
+    wsTimeout.idle_timeout      = std::chrono::seconds(WsIdleTimeoutSec);
+    wsTimeout.keep_alive_pings  = true; // send pings to detect dead connections
+    m_ws->set_option(wsTimeout);
     m_ws->set_option(beast::websocket::stream_base::decorator(
         [](beast::websocket::request_type& req)
         {
