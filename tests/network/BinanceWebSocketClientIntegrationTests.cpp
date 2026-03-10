@@ -198,3 +198,88 @@ TEST(BinanceWebSocketClientIntegrationTest, ErrorHandlerCalledOnInvalidHost)
         }))
         << "Timed out waiting for error handler to be called";
 }
+
+// Connects to loopback with a port that has nothing listening (DNS resolves
+// instantly, TCP connect fails) — exercises the onConnect error branch and
+// scheduleReconnect().
+TEST(BinanceWebSocketClientIntegrationTest, ConnectToClosedPort_CallsErrorHandler)
+{
+    std::atomic<bool> errorReceived{false};
+    std::mutex mtx;
+    std::condition_variable cv;
+
+    BinanceWebSocketClient client(makeConfig(), std::make_shared<NullLogger>());
+    client.setErrorHandler(
+        [&](const std::string&)
+        {
+            if (!errorReceived.exchange(true))
+            {
+                std::lock_guard lk(mtx);
+                cv.notify_one();
+            }
+        });
+
+    // 127.0.0.1 resolves immediately; port 19998 is virtually never in use,
+    // so async_connect fails → onConnect error branch → scheduleReconnect().
+    client.connect("127.0.0.1", "19998", "/test");
+
+    EXPECT_TRUE(waitFor(
+        mtx,
+        cv,
+        [&]
+        {
+            return errorReceived.load();
+        }))
+        << "Timed out waiting for TCP connect error";
+
+    client.disconnect();
+}
+
+// Verifies that reportError() does not crash when no error handler is set
+// (exercises the `if (m_errorHandler)` false branch).
+TEST(BinanceWebSocketClientIntegrationTest, NoErrorHandler_ErrorDoesNotCrash)
+{
+    // No setErrorHandler() call — error handler is null.
+    BinanceWebSocketClient client(makeConfig(), std::make_shared<NullLogger>());
+
+    client.connect("invalid.host.that.does.not.exist", port, target);
+
+    // Give the client time to attempt resolution and trigger reportError().
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    EXPECT_NO_THROW(client.disconnect());
+}
+
+// Connects to an invalid host and waits long enough for the reconnect timer
+// to fire at least once — exercises the scheduleReconnect() timer callback.
+TEST(BinanceWebSocketClientIntegrationTest, ReconnectTimerFires_AttemptsReconnect)
+{
+    std::atomic<int> errorCount{0};
+    std::mutex mtx;
+    std::condition_variable cv;
+
+    BinanceWebSocketClient client(makeConfig(), std::make_shared<NullLogger>());
+    client.setErrorHandler(
+        [&](const std::string&)
+        {
+            if (errorCount.fetch_add(1) == 1) // second error = after reconnect attempt
+            {
+                std::lock_guard lk(mtx);
+                cv.notify_one();
+            }
+        });
+
+    client.connect("invalid.host.that.does.not.exist", port, target);
+
+    // Wait for at least 2 errors: the first failure + the reconnect attempt failure.
+    EXPECT_TRUE(waitFor(
+        mtx,
+        cv,
+        [&]
+        {
+            return errorCount.load() >= 2;
+        }))
+        << "Reconnect attempt did not fire within timeout";
+
+    client.disconnect();
+}

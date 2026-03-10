@@ -10,6 +10,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <atomic>
+#include <chrono>
+#include <stdexcept>
+#include <thread>
+
 namespace
 {
 
@@ -301,6 +306,70 @@ TEST_F(MonitoringServiceTest, StopMonitoring_FlushesRemainingWindows)
     EXPECT_CALL(*m_mockSer, write(ElementsAre(Field(&WindowStats::symbol, "BTCUSDT"))));
 
     s.service->stopMonitoring();
+}
+
+// ── onError: error handler invocation ────────────────────────────────────────
+
+TEST_F(MonitoringServiceTest, OnError_LogsError_NoThrow)
+{
+    auto s = startService();
+
+    EXPECT_CALL(*m_mockClient, disconnect());
+    EXPECT_CALL(*m_mockAgg, popAllWindows()).WillOnce(Return(std::vector<WindowStats>{}));
+
+    EXPECT_NO_THROW(s.onError("WebSocket connection lost"));
+
+    s.service->stopMonitoring();
+}
+
+// ── stopMonitoring: serializer exception is caught and does not propagate ─────
+
+TEST_F(MonitoringServiceTest, StopMonitoring_SerializerThrows_DoesNotPropagate)
+{
+    auto s = startService();
+
+    EXPECT_CALL(*m_mockClient, disconnect());
+    EXPECT_CALL(*m_mockAgg, popAllWindows()).WillOnce(Return(std::vector<WindowStats>{}));
+    EXPECT_CALL(*m_mockSer, write(_)).WillOnce(Throw(std::runtime_error("disk full")));
+
+    EXPECT_NO_THROW(s.service->stopMonitoring());
+}
+
+// ── scheduleFlush: periodic timer fires and calls popCompletedWindows ─────────
+
+TEST_F(MonitoringServiceTest, ScheduleFlush_PeriodicFlush_CallsPopCompletedWindows)
+{
+    m_config->serializationIntervalMs = 5; // fire quickly
+
+    std::atomic<bool> flushed{false};
+    ON_CALL(*m_mockAgg, popCompletedWindows(_))
+        .WillByDefault([&](int64_t) -> std::vector<WindowStats> {
+            flushed.store(true, std::memory_order_release);
+            return {};
+        });
+
+    auto svc = std::make_unique<MonitoringService>(
+        m_config, m_logger, m_mockClient, m_mockAgg, m_mockSer);
+
+    EXPECT_CALL(*m_mockClient, setMessageHandler(_));
+    EXPECT_CALL(*m_mockClient, setErrorHandler(_));
+    EXPECT_CALL(*m_mockClient, connect(_, _, _));
+    EXPECT_CALL(*m_mockClient, disconnect());
+    EXPECT_CALL(*m_mockAgg, popAllWindows()).WillOnce(Return(std::vector<WindowStats>{}));
+
+    svc->startMonitoring();
+
+    // Wait up to 2 s for the timer callback to fire at least once.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (!flushed.load(std::memory_order_acquire) &&
+           std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    svc->stopMonitoring();
+
+    EXPECT_TRUE(flushed.load()) << "scheduleFlush callback never fired";
 }
 
 } // namespace

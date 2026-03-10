@@ -9,6 +9,7 @@ add_executable(${PROJECT_NAME}
     logging/LoggerTests.cpp
     market/MonitoringServiceTests.cpp
     market/TradeAggregatorTests.cpp
+    network/BinanceWebSocketClientTests.cpp
     serialization/FileSerializerTests.cpp
 )
 
