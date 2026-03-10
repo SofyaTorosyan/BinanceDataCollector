@@ -1,0 +1,34 @@
+{
+    "version": 4,
+    "configurePresets": [
+        {
+            "name": "coverage",
+            "displayName": "Coverage (Debug + lcov)",
+            "description": "Debug build with --coverage instrumentation. Requires: conan install . --build=missing -s build_type=Debug",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build/Debug",
+            "toolchainFile": "${sourceDir}/build/Debug/generators/conan_toolchain.cmake",
+            "cacheVariables": {
+                "CMAKE_POLICY_DEFAULT_CMP0091": "NEW",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "ENABLE_COVERAGE": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "coverage",
+            "configurePreset": "coverage",
+            "jobs": 24
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "coverage",
+            "configurePreset": "coverage",
+            "execution": {
+                "jobs": 24
+            }
+        }
+    ]
+}

@@ -21,6 +21,34 @@ cmake -S . --preset conan-release
 cmake --build build --preset conan-release
 ```
 
+## Code Coverage
+
+Requires `lcov`:
+
+```bash
+sudo apt install lcov
+```
+
+### Configure with coverage instrumentation
+
+```bash
+conan install . --build=missing -s build_type=Debug
+cmake -S . --preset coverage
+```
+
+### Build and Generate report
+
+```bash
+cmake --build build/Debug --target coverage
+```
+
+This runs both unit and integration tests (integration tests require a live Binance connection), then produces:
+
+- **HTML report:** `build/Debug/coverage-report/html/index.html`
+- **Terminal summary:** printed at the end of the build
+
+---
+
 ## Deploy (Linux — systemd)
 
 Create a dedicated user and install the binary and config:

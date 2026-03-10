@@ -24,7 +24,7 @@ using namespace std::string_literals;
 namespace
 {
 constexpr auto ConfigFileName = "config.json"s;
-constexpr auto logName = "app.log"s;
+constexpr auto logName = "app"s;
 } // namespace
 
 App::App()
