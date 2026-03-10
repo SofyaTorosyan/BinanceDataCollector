@@ -4,6 +4,7 @@
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/signal_set.hpp>
+#include <boost/di.hpp>
 
 #include "BinanceWebSocketClient.h"
 #include "FileSerializer.h"
@@ -13,6 +14,8 @@
 #include "SpdlogLogger.h"
 #include "TradeAggregator.h"
 
+namespace di = boost::di;
+
 namespace bdc::app
 {
 
@@ -20,8 +23,9 @@ using namespace std::string_literals;
 
 namespace
 {
-const auto ConfigFileName = "config.json"s;
-}
+constexpr auto ConfigFileName = "config.json"s;
+constexpr auto logName = "app.log"s;
+} // namespace
 
 App::App()
 {
@@ -33,17 +37,21 @@ void App::run()
 {
     try
     {
-        m_configReader = std::make_shared<config::JsonConfigReader>(ConfigFileName);
-        m_appConfig = std::make_shared<config::AppConfig>(m_configReader->getConfig());
+        auto configReader = std::make_shared<config::JsonConfigReader>(ConfigFileName);
+        auto appConfig = std::make_shared<config::AppConfig>(configReader->getConfig());
+        auto logger = std::make_shared<logging::SpdlogLogger>(
+            logName, logging::fromString(appConfig->logLevel));
 
-        m_logger = std::make_shared<logging::SpdlogLogger>(
-            "app.log"s, logging::fromString(m_appConfig->logLevel));
+        auto injector = di::make_injector(
+            di::bind<config::AppConfig>().to(appConfig),
+            di::bind<logging::ILogger>().to(logger),
+            di::bind<network::IWebSocketClient>().to<network::BinanceWebSocketClient>(),
+            di::bind<serialization::ISerializer>().to<serialization::FileSerializer>(),
+            di::bind<market::IAggregator>().to<market::TradeAggregator>(),
+            di::bind<market::IMonitoringService>().to<market::MonitoringService>());
 
-        m_aggregator = std::make_shared<market::TradeAggregator>(m_appConfig);
-        m_webSocketClient = std::make_shared<network::BinanceWebSocketClient>(m_logger);
-        m_serializer = std::make_shared<serialization::FileSerializer>(m_appConfig);
-        m_monitoringService = std::make_shared<market::MonitoringService>(
-            m_appConfig, m_logger, m_webSocketClient, m_aggregator, m_serializer);
+        m_logger = logger;
+        m_monitoringService = injector.create<std::shared_ptr<market::IMonitoringService>>();
 
         m_monitoringService->startMonitoring();
 

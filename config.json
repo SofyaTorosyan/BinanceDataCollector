@@ -5,6 +5,6 @@
   "windowMs": 1000,
   "serializationIntervalMs": 5000,
   "outputFile": "market_data.log",
-  "logLevel": "trace",
+  "logLevel": "info",
   "reconnectMaxDelayMs": 60000
 }

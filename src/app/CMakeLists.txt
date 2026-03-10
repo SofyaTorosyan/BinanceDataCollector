@@ -9,4 +9,6 @@ add_executable(${APP_NAME}
     main.cpp
 )
 
-target_link_libraries(${APP_NAME} PUBLIC lib-config lib-logging lib-network lib-serialization lib-market)
+find_package(di REQUIRED)
+
+target_link_libraries(${APP_NAME} PUBLIC lib-config lib-logging lib-network lib-serialization lib-market di::di)
