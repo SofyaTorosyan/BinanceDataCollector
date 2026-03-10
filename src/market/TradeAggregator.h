@@ -1,4 +1,5 @@
 #pragma once
+#include "AppConfig.h"
 #include "IAggregator.h"
 #include <map>
 #include <mutex>
@@ -9,7 +10,7 @@ namespace bdc::market
 class TradeAggregator : public IAggregator
 {
 public:
-    explicit TradeAggregator(int windowMs);
+    explicit TradeAggregator(config::AppConfigPtr appConfig);
 
     void addTrade(const TradeEvent& event) override;
     std::vector<bdc::serialization::WindowStats> popCompletedWindows(int64_t nowMs) override;
@@ -29,7 +30,7 @@ private:
         }
     };
 
-    int m_windowMs;
+    config::AppConfigPtr m_appConfig;
     std::map<WindowKey, bdc::serialization::WindowStats> m_windows;
     std::mutex m_mutex;
 };

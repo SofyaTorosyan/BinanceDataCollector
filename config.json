@@ -1,0 +1,10 @@
+{
+  "tradingPairs": ["BTCUSDT", "ETHUSDT"],
+  "host": "stream.binance.com",
+  "port": "9443",
+  "windowMs": 1000,
+  "serializationIntervalMs": 5000,
+  "outputFile": "market_data.log",
+  "logLevel": "trace",
+  "reconnectMaxDelayMs": 60000
+}

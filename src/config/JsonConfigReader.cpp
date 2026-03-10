@@ -7,6 +7,8 @@
 namespace
 {
 constexpr auto tradingPairsKey = "tradingPairs";
+constexpr auto hostKey = "host";
+constexpr auto portKey = "port";
 constexpr auto windowMsKey = "windowMs";
 constexpr auto serializationIntervalMsKey = "serializationIntervalMs";
 constexpr auto outputFileKey = "outputFile";
@@ -43,6 +45,8 @@ AppConfig JsonConfigReader::load(std::string_view filePath)
 
     static const char* required[] = {
         tradingPairsKey,
+        hostKey,
+        portKey,
         windowMsKey,
         serializationIntervalMsKey,
         outputFileKey,
@@ -58,6 +62,8 @@ AppConfig JsonConfigReader::load(std::string_view filePath)
 
     AppConfig cfg{
         .tradingPairs = jsonData[tradingPairsKey].get<std::vector<std::string>>(),
+        .host = jsonData[hostKey].get<std::string>(),
+        .port = jsonData[portKey].get<std::string>(),
         .windowMs = jsonData[windowMsKey].get<int>(),
         .serializationIntervalMs = jsonData[serializationIntervalMsKey].get<int>(),
         .outputFile = jsonData[outputFileKey].get<std::string>(),

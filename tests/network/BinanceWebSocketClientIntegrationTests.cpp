@@ -1,4 +1,5 @@
 #include "BinanceWebSocketClient.h"
+#include "ILogger.h"
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -10,6 +11,12 @@
 
 namespace
 {
+
+class NullLogger : public bdc::logging::ILogger
+{
+public:
+    void log(bdc::logging::LogLevel, std::string_view) override {}
+};
 
 constexpr auto host = "stream.binance.com";
 constexpr auto port = "9443";
@@ -37,7 +44,7 @@ TEST(BinanceWebSocketClientIntegrationTest, ConnectsAndReceivesMessage)
     std::mutex mtx;
     std::condition_variable cv;
 
-    BinanceWebSocketClient client(host, port, target);
+    BinanceWebSocketClient client(std::make_shared<NullLogger>());
     client.setMessageHandler(
         [&](const std::string&)
         {
@@ -48,7 +55,7 @@ TEST(BinanceWebSocketClientIntegrationTest, ConnectsAndReceivesMessage)
             }
         });
 
-    client.connect();
+    client.connect(host, port, target);
 
     EXPECT_TRUE(waitFor(
         mtx,
@@ -66,7 +73,7 @@ TEST(BinanceWebSocketClientIntegrationTest, ConnectsAndReceives10Messages)
     std::mutex mtx;
     std::condition_variable cv;
 
-    BinanceWebSocketClient client(host, port, target);
+    BinanceWebSocketClient client(std::make_shared<NullLogger>());
     client.setMessageHandler(
         [&](const std::string& message)
         {
@@ -78,14 +85,14 @@ TEST(BinanceWebSocketClientIntegrationTest, ConnectsAndReceives10Messages)
             }
         });
 
-    client.connect();
+    client.connect(host, port, target);
 
     EXPECT_TRUE(waitFor(
         mtx,
         cv,
         [&]
         {
-            return received.load();
+            return received.load() >= 10;
         }))
         << "Timed out waiting for a message from Binance";
 }
@@ -98,7 +105,7 @@ TEST(BinanceWebSocketClientIntegrationTest, ReceivedMessageIsNonEmptyJson)
     std::mutex mtx;
     std::condition_variable cv;
 
-    BinanceWebSocketClient client(host, port, target);
+    BinanceWebSocketClient client(std::make_shared<NullLogger>());
     client.setMessageHandler(
         [&](const std::string& msg)
         {
@@ -110,7 +117,7 @@ TEST(BinanceWebSocketClientIntegrationTest, ReceivedMessageIsNonEmptyJson)
             }
         });
 
-    client.connect();
+    client.connect(host, port, target);
 
     ASSERT_TRUE(waitFor(
         mtx,
@@ -132,7 +139,7 @@ TEST(BinanceWebSocketClientIntegrationTest, DisconnectsCleanly)
     std::mutex mtx;
     std::condition_variable cv;
 
-    BinanceWebSocketClient client(host, port, target);
+    BinanceWebSocketClient client(std::make_shared<NullLogger>());
     client.setMessageHandler(
         [&](const std::string&)
         {
@@ -143,7 +150,7 @@ TEST(BinanceWebSocketClientIntegrationTest, DisconnectsCleanly)
             }
         });
 
-    client.connect();
+    client.connect(host, port, target);
     waitFor(
         mtx,
         cv,
@@ -163,7 +170,7 @@ TEST(BinanceWebSocketClientIntegrationTest, ErrorHandlerCalledOnInvalidHost)
     std::mutex mtx;
     std::condition_variable cv;
 
-    BinanceWebSocketClient client("invalid.host.that.does.not.exist", port, target);
+    BinanceWebSocketClient client(std::make_shared<NullLogger>());
     client.setErrorHandler(
         [&](const std::string&)
         {
@@ -174,7 +181,7 @@ TEST(BinanceWebSocketClientIntegrationTest, ErrorHandlerCalledOnInvalidHost)
             }
         });
 
-    client.connect();
+    client.connect("invalid.host.that.does.not.exist", port, target);
 
     EXPECT_TRUE(waitFor(
         mtx,

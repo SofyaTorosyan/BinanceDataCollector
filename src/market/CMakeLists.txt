@@ -15,4 +15,4 @@ add_library(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC lib-serialization lib-network lib-logging nlohmann_json::nlohmann_json)
+target_link_libraries(${PROJECT_NAME} PUBLIC lib-config lib-serialization lib-network lib-logging nlohmann_json::nlohmann_json)

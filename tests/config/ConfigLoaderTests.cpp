@@ -16,6 +16,8 @@ std::string writeTempFile(const std::string& content)
 
 constexpr auto validJson = R"({
     "tradingPairs": ["BTCUSDT", "ETHUSDT"],
+    "host": "stream.binance.com",
+    "port": "9443",
     "windowMs": 3000,
     "serializationIntervalMs": 10000,
     "outputFile": "out.log",
@@ -34,6 +36,8 @@ TEST(JsonConfigReaderTest, LoadsValidConfig)
     auto cfg = reader.getConfig();
 
     EXPECT_EQ(cfg.tradingPairs, (std::vector<std::string>{"BTCUSDT", "ETHUSDT"}));
+    EXPECT_EQ(cfg.host, "stream.binance.com");
+    EXPECT_EQ(cfg.port, "9443");
     EXPECT_EQ(cfg.windowMs, 3000);
     EXPECT_EQ(cfg.serializationIntervalMs, 10000);
     EXPECT_EQ(cfg.outputFile, "out.log");
@@ -81,6 +85,8 @@ TEST(JsonConfigReaderTest, ThrowsOnMissingWindowMs)
 {
     auto path = writeTempFile(R"({
         "tradingPairs": ["BTCUSDT"],
+        "host": "stream.binance.com",
+        "port": "9443",
         "serializationIntervalMs": 10000,
         "outputFile": "out.log",
         "logLevel": "debug",
@@ -93,6 +99,8 @@ TEST(JsonConfigReaderTest, ThrowsOnMissingSerializationIntervalMs)
 {
     auto path = writeTempFile(R"({
         "tradingPairs": ["BTCUSDT"],
+        "host": "stream.binance.com",
+        "port": "9443",
         "windowMs": 3000,
         "outputFile": "out.log",
         "logLevel": "debug",
@@ -105,6 +113,8 @@ TEST(JsonConfigReaderTest, ThrowsOnMissingOutputFile)
 {
     auto path = writeTempFile(R"({
         "tradingPairs": ["BTCUSDT"],
+        "host": "stream.binance.com",
+        "port": "9443",
         "windowMs": 3000,
         "serializationIntervalMs": 10000,
         "logLevel": "debug",
@@ -117,6 +127,8 @@ TEST(JsonConfigReaderTest, ThrowsOnMissingLogLevel)
 {
     auto path = writeTempFile(R"({
         "tradingPairs": ["BTCUSDT"],
+        "host": "stream.binance.com",
+        "port": "9443",
         "windowMs": 3000,
         "serializationIntervalMs": 10000,
         "outputFile": "out.log",
@@ -129,6 +141,8 @@ TEST(JsonConfigReaderTest, ThrowsOnMissingReconnectMaxDelayMs)
 {
     auto path = writeTempFile(R"({
         "tradingPairs": ["BTCUSDT"],
+        "host": "stream.binance.com",
+        "port": "9443",
         "windowMs": 3000,
         "serializationIntervalMs": 10000,
         "outputFile": "out.log",
@@ -141,6 +155,8 @@ TEST(JsonConfigReaderTest, LoadsEmptyTradingPairs)
 {
     auto path = writeTempFile(R"({
         "tradingPairs": [],
+        "host": "stream.binance.com",
+        "port": "9443",
         "windowMs": 1000,
         "serializationIntervalMs": 5000,
         "outputFile": "out.log",

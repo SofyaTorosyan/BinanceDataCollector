@@ -1,4 +1,5 @@
 #pragma once
+#include "ILogger.h"
 #include "IWebSocketClient.h"
 
 #include <boost/asio/executor_work_guard.hpp>
@@ -20,12 +21,10 @@ namespace bdc::network {
 
 class BinanceWebSocketClient : public IWebSocketClient {
 public:
-    // host: "stream.binance.com", port: "9443"
-    // target: "/stream?streams=btcusdt@trade/ethusdt@trade"
-    BinanceWebSocketClient(std::string host, std::string port, std::string target);
+    explicit BinanceWebSocketClient(logging::ILoggerPtr logger);
     ~BinanceWebSocketClient() override;
 
-    void connect()    override;
+    void connect(std::string host, std::string port, std::string target) override;
     void disconnect() override;
     void setMessageHandler(MessageHandler handler) override;
     void setErrorHandler(ErrorHandler handler)     override;
@@ -58,10 +57,11 @@ private:
     std::unique_ptr<WsStream>      m_ws;
     boost::beast::flat_buffer      m_buffer;
 
-    MessageHandler    m_messageHandler;
-    ErrorHandler      m_errorHandler;
-    std::atomic<bool> m_connected{false};
-    std::thread       m_ioThread;
+    logging::ILoggerPtr m_logger;
+    MessageHandler      m_messageHandler;
+    ErrorHandler        m_errorHandler;
+    std::atomic<bool>   m_connected{false};
+    std::thread         m_ioThread;
 };
 
 } // namespace bdc::network

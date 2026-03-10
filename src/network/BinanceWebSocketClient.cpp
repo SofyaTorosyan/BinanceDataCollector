@@ -10,16 +10,13 @@ using tcp       = net::ip::tcp;
 
 namespace bdc::network {
 
-BinanceWebSocketClient::BinanceWebSocketClient(
-    std::string host, std::string port, std::string target)
-    : m_host(std::move(host))
-    , m_port(std::move(port))
-    , m_target(std::move(target))
-    , m_ioc()
+BinanceWebSocketClient::BinanceWebSocketClient(logging::ILoggerPtr logger)
+    : m_ioc()
     , m_sslCtx(ssl::context::tlsv12_client)
     , m_strand(net::make_strand(m_ioc))
     , m_workGuard(net::make_work_guard(m_ioc))
     , m_resolver(m_strand)
+    , m_logger(std::move(logger))
 {
     // Load system CA certificates for peer verification.
     m_sslCtx.set_default_verify_paths();
@@ -53,8 +50,14 @@ void BinanceWebSocketClient::setErrorHandler(ErrorHandler handler)
     m_errorHandler = std::move(handler);
 }
 
-void BinanceWebSocketClient::connect()
+void BinanceWebSocketClient::connect(std::string host, std::string port, std::string target)
 {
+    m_host   = std::move(host);
+    m_port   = std::move(port);
+    m_target = std::move(target);
+
+    m_logger->info("Connecting to {}:{}{}", m_host, m_port, m_target);
+
     net::post(
         m_strand,
         [this]()
@@ -74,6 +77,7 @@ void BinanceWebSocketClient::connect()
 
 void BinanceWebSocketClient::disconnect()
 {
+    m_logger->info("Disconnecting from {}:{}", m_host, m_port);
     net::post(
         m_strand,
         [this]()
@@ -149,6 +153,7 @@ void BinanceWebSocketClient::onWsHandshake(beast::error_code ec)
         return;
     }
     m_connected = true;
+    m_logger->info("Connected to {}:{}{}", m_host, m_port, m_target);
     doRead();
 }
 
@@ -180,12 +185,11 @@ void BinanceWebSocketClient::onRead(beast::error_code ec, std::size_t /*bytes*/)
 
 void BinanceWebSocketClient::reportError(const std::string& msg)
 {
-    if (!m_errorHandler)
+    m_logger->error("{}", msg);
+    if (m_errorHandler)
     {
-        return;
+        m_errorHandler(msg);
     }
-
-    m_errorHandler(msg);
 }
 
 } // namespace bdc::network

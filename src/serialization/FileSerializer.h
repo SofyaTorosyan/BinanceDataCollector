@@ -1,7 +1,7 @@
 #pragma once
 
+#include "AppConfig.h"
 #include "ISerializer.h"
-#include <string>
 
 namespace bdc::serialization
 {
@@ -9,11 +9,11 @@ namespace bdc::serialization
 class FileSerializer : public ISerializer
 {
 public:
-    explicit FileSerializer(std::string filePath);
+    explicit FileSerializer(config::AppConfigPtr config);
     void write(const std::vector<WindowStats>& windows) override;
 
 private:
-    std::string m_filePath;
+    config::AppConfigPtr m_config;
 };
 
 } // namespace bdc::serialization

@@ -14,7 +14,7 @@ public:
     using ErrorHandler = std::function<void(const std::string&)>;
 
     virtual ~IWebSocketClient() = default;
-    virtual void connect() = 0;
+    virtual void connect(std::string host, std::string port, std::string target) = 0;
     virtual void disconnect() = 0;
     virtual void setMessageHandler(MessageHandler handler) = 0;
     virtual void setErrorHandler(ErrorHandler handler) = 0;

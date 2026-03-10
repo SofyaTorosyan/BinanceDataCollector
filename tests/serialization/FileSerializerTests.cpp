@@ -1,7 +1,9 @@
+#include "AppConfig.h"
 #include "FileSerializer.h"
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -9,8 +11,16 @@ namespace
 {
 
 namespace fs = std::filesystem;
+using bdc::config::AppConfig;
 using bdc::serialization::FileSerializer;
 using bdc::serialization::WindowStats;
+
+bdc::config::AppConfigPtr makeConfig(const std::string& outputFile)
+{
+    auto cfg = std::make_shared<AppConfig>();
+    cfg->outputFile = outputFile;
+    return cfg;
+}
 
 class FileSerializerTest : public ::testing::Test
 {
@@ -59,14 +69,14 @@ protected:
 
 TEST_F(FileSerializerTest, WriteEmptyVector_DoesNotCreateFile)
 {
-    FileSerializer s(m_tempFile.string());
+    FileSerializer s(makeConfig(m_tempFile.string()));
     s.write({});
     EXPECT_FALSE(fs::exists(m_tempFile));
 }
 
 TEST_F(FileSerializerTest, WriteAllZeroTrades_DoesNotCreateFile)
 {
-    FileSerializer s(m_tempFile.string());
+    FileSerializer s(makeConfig(m_tempFile.string()));
     auto w = makeWindow("BTCUSDT", 1000, 0, 0.0, 100.0, 200.0, 0, 0);
     s.write({w});
     EXPECT_FALSE(fs::exists(m_tempFile));
@@ -74,7 +84,7 @@ TEST_F(FileSerializerTest, WriteAllZeroTrades_DoesNotCreateFile)
 
 TEST_F(FileSerializerTest, WriteSingleWindow_ProducesCorrectFormat)
 {
-    FileSerializer s(m_tempFile.string());
+    FileSerializer s(makeConfig(m_tempFile.string()));
     auto w = makeWindow("BTCUSDT", 1609459200000LL, 5, 1.2345, 29000.1234, 30000.5678, 3, 2);
     s.write({w});
 
@@ -91,7 +101,7 @@ TEST_F(FileSerializerTest, WriteSingleWindow_ProducesCorrectFormat)
 
 TEST_F(FileSerializerTest, WriteMultipleSymbolsSameTimestamp_AllUnderOneTimestampHeader)
 {
-    FileSerializer s(m_tempFile.string());
+    FileSerializer s(makeConfig(m_tempFile.string()));
     std::vector<WindowStats> windows = {
         makeWindow("BTCUSDT", 1000, 2, 0.5, 29000.0, 30000.0, 1, 1),
         makeWindow("ETHUSDT", 1000, 3, 10.0, 1800.0, 1900.0, 2, 1),
@@ -110,7 +120,7 @@ TEST_F(FileSerializerTest, WriteMultipleSymbolsSameTimestamp_AllUnderOneTimestam
 
 TEST_F(FileSerializerTest, WriteMultipleTimestamps_SortedAscending)
 {
-    FileSerializer s(m_tempFile.string());
+    FileSerializer s(makeConfig(m_tempFile.string()));
     // Intentionally out of order
     std::vector<WindowStats> windows = {
         makeWindow("BTCUSDT", 2000, 1, 1.0, 100.0, 200.0, 1, 0),
@@ -128,7 +138,7 @@ TEST_F(FileSerializerTest, WriteMultipleTimestamps_SortedAscending)
 
 TEST_F(FileSerializerTest, WriteAppendsToExistingFile)
 {
-    FileSerializer s(m_tempFile.string());
+    FileSerializer s(makeConfig(m_tempFile.string()));
     auto w1 = makeWindow("BTCUSDT", 1000, 1, 1.0, 100.0, 200.0, 1, 0);
     auto w2 = makeWindow("ETHUSDT", 2000, 1, 5.0, 1800.0, 1900.0, 0, 1);
 
@@ -142,7 +152,7 @@ TEST_F(FileSerializerTest, WriteAppendsToExistingFile)
 
 TEST_F(FileSerializerTest, WriteSkipsWindowsWithZeroTrades)
 {
-    FileSerializer s(m_tempFile.string());
+    FileSerializer s(makeConfig(m_tempFile.string()));
     std::vector<WindowStats> windows = {
         makeWindow("BTCUSDT", 1000, 0, 0.0, 100.0, 200.0, 0, 0),
         makeWindow("ETHUSDT", 1000, 2, 5.0, 1800.0, 1900.0, 1, 1),
@@ -156,7 +166,7 @@ TEST_F(FileSerializerTest, WriteSkipsWindowsWithZeroTrades)
 
 TEST_F(FileSerializerTest, ThrowsWhenFileCannotBeOpened)
 {
-    FileSerializer s("/nonexistent/directory/output.log");
+    FileSerializer s(makeConfig("/nonexistent/directory/output.log"));
     auto w = makeWindow("BTCUSDT", 1000, 1, 1.0, 100.0, 200.0, 1, 0);
     EXPECT_THROW(s.write({w}), std::runtime_error);
 }

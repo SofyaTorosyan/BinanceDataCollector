@@ -4,13 +4,13 @@
 namespace bdc::market
 {
 
-TradeAggregator::TradeAggregator(const int windowMs) : m_windowMs(windowMs)
+TradeAggregator::TradeAggregator(config::AppConfigPtr appConfig) : m_appConfig(std::move(appConfig))
 {
 }
 
 void TradeAggregator::addTrade(const TradeEvent& event)
 {
-    int64_t windowStartMs = (event.tradeTimeMs / m_windowMs) * m_windowMs;
+    int64_t windowStartMs = (event.tradeTimeMs / m_appConfig->windowMs) * m_appConfig->windowMs;
     WindowKey key{event.symbol, windowStartMs};
 
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -43,7 +43,7 @@ std::vector<bdc::serialization::WindowStats> TradeAggregator::popCompletedWindow
 
     for (auto it = m_windows.begin(); it != m_windows.end();)
     {
-        if (it->first.windowStartMs + m_windowMs <= nowMs)
+        if (it->first.windowStartMs + m_appConfig->windowMs <= nowMs)
         {
             result.push_back(it->second);
             it = m_windows.erase(it);

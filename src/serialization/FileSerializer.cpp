@@ -21,7 +21,7 @@ std::string formatTimestampUtc(const int64_t ms)
 
 } // namespace
 
-FileSerializer::FileSerializer(std::string filePath) : m_filePath{std::move(filePath)}
+FileSerializer::FileSerializer(config::AppConfigPtr config) : m_config{std::move(config)}
 {
 }
 
@@ -47,10 +47,10 @@ void FileSerializer::write(const std::vector<WindowStats>& windows)
         return;
     }
 
-    std::ofstream file(m_filePath, std::ios::app);
+    std::ofstream file(m_config->outputFile, std::ios::app);
     if (!file.is_open())
     {
-        throw std::runtime_error("Cannot open output file: " + m_filePath);
+        throw std::runtime_error("Cannot open output file: " + m_config->outputFile);
     }
     file.exceptions(std::ios::failbit | std::ios::badbit);
 
