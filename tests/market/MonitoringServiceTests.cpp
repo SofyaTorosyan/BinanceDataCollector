@@ -251,6 +251,74 @@ TEST_F(MonitoringServiceTest, OnMessage_CombinedStreamEnvelope_UnwrapsDataField)
     EXPECT_DOUBLE_EQ(captured.price, 50000.0);
 }
 
+// ── parseMessage: missing required fields ────────────────────────────────────
+
+TEST_F(MonitoringServiceTest, OnMessage_MissingSymbol_NoTradeAdded)
+{
+    auto s = startService();
+
+    EXPECT_CALL(*m_mockAgg, addTrade(_)).Times(0);
+    EXPECT_CALL(*m_mockClient, disconnect());
+    EXPECT_CALL(*m_mockAgg, popAllWindows()).WillOnce(Return(std::vector<WindowStats>{}));
+
+    // "s" field is absent
+    s.onMessage(R"({"p":"43000.5","q":"0.01","T":1700000000000,"m":false})");
+
+    s.service->stopMonitoring();
+}
+
+TEST_F(MonitoringServiceTest, OnMessage_MissingPrice_NoTradeAdded)
+{
+    auto s = startService();
+
+    EXPECT_CALL(*m_mockAgg, addTrade(_)).Times(0);
+    EXPECT_CALL(*m_mockClient, disconnect());
+    EXPECT_CALL(*m_mockAgg, popAllWindows()).WillOnce(Return(std::vector<WindowStats>{}));
+
+    s.onMessage(R"({"s":"BTCUSDT","q":"0.01","T":1700000000000,"m":false})");
+
+    s.service->stopMonitoring();
+}
+
+TEST_F(MonitoringServiceTest, OnMessage_MissingQuantity_NoTradeAdded)
+{
+    auto s = startService();
+
+    EXPECT_CALL(*m_mockAgg, addTrade(_)).Times(0);
+    EXPECT_CALL(*m_mockClient, disconnect());
+    EXPECT_CALL(*m_mockAgg, popAllWindows()).WillOnce(Return(std::vector<WindowStats>{}));
+
+    s.onMessage(R"({"s":"BTCUSDT","p":"43000.5","T":1700000000000,"m":false})");
+
+    s.service->stopMonitoring();
+}
+
+TEST_F(MonitoringServiceTest, OnMessage_MissingTradeTime_NoTradeAdded)
+{
+    auto s = startService();
+
+    EXPECT_CALL(*m_mockAgg, addTrade(_)).Times(0);
+    EXPECT_CALL(*m_mockClient, disconnect());
+    EXPECT_CALL(*m_mockAgg, popAllWindows()).WillOnce(Return(std::vector<WindowStats>{}));
+
+    s.onMessage(R"({"s":"BTCUSDT","p":"43000.5","q":"0.01","m":false})");
+
+    s.service->stopMonitoring();
+}
+
+TEST_F(MonitoringServiceTest, OnMessage_MissingIsBuyerMaker_NoTradeAdded)
+{
+    auto s = startService();
+
+    EXPECT_CALL(*m_mockAgg, addTrade(_)).Times(0);
+    EXPECT_CALL(*m_mockClient, disconnect());
+    EXPECT_CALL(*m_mockAgg, popAllWindows()).WillOnce(Return(std::vector<WindowStats>{}));
+
+    s.onMessage(R"({"s":"BTCUSDT","p":"43000.5","q":"0.01","T":1700000000000})");
+
+    s.service->stopMonitoring();
+}
+
 // ── parseMessage: invalid / unexpected input ─────────────────────────────────
 
 TEST_F(MonitoringServiceTest, OnMessage_InvalidJson_NoTradeAddedNoThrow)

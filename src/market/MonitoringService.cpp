@@ -40,7 +40,11 @@ void MonitoringService::startMonitoring()
     m_webSocketClient->connect(m_config->host, m_config->port, std::move(target));
 
     scheduleFlush();
-    m_timerThread = std::thread([this]() { m_timerIoc.run(); });
+    m_timerThread = std::thread(
+        [this]()
+        {
+            m_timerIoc.run();
+        });
 }
 
 void MonitoringService::stopMonitoring()
@@ -90,7 +94,7 @@ void MonitoringService::onMessage(const std::string& jsonMessage)
     const auto tradeEventOpt = parseMessage(jsonMessage);
     if (!tradeEventOpt.has_value())
     {
-        m_logger->error("Failed to parse message: {}", jsonMessage);
+        m_logger->warn("Skipping message with missing fields: {}", jsonMessage);
         return;
     }
 
@@ -111,12 +115,20 @@ std::optional<TradeEvent> MonitoringService::parseMessage(const std::string& jso
         // Combined-stream messages wrap the payload: {"stream":"...","data":{...}}
         const auto& data = json.contains("data") ? json["data"] : json;
 
+        if (!data.contains("s") || !data.contains("p") || !data.contains("q") ||
+            !data.contains("T") || !data.contains("m"))
+        {
+            // Based on the Binance WebSocket Streams docs, the trade payload fields (s, p, q, T, m)
+            // are never null in normal operation, they're always present in every trade event.
+            return std::nullopt;
+        }
+
         TradeEvent ev = {
-            .symbol = data.value("s", ""),
-            .price = std::stod(data.value("p", "0")),
-            .quantity = std::stod(data.value("q", "0")),
-            .tradeTimeMs = data.value("T", int64_t{0}),
-            .isBuyerMaker = data.value("m", false),
+            .symbol = data["s"].get<std::string>(),
+            .price = std::stod(data["p"].get<std::string>()),
+            .quantity = std::stod(data["q"].get<std::string>()),
+            .tradeTimeMs = data["T"].get<int64_t>(),
+            .isBuyerMaker = data["m"].get<bool>(),
         };
 
         return ev;
