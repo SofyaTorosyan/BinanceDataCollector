@@ -187,3 +187,42 @@ TEST(SpdlogLoggerTest, ImplementsILoggerInterface)
     EXPECT_NO_THROW(logger->info("message via interface"));
     EXPECT_NO_THROW(logger->warn("warn via interface: {}", 42));
 }
+
+// ---------------------------------------------------------------------------
+// Template instantiation coverage — each convenience method called with both
+// zero-argument and format-argument forms to exercise all template branches.
+// ---------------------------------------------------------------------------
+
+TEST(ILoggerTest, AllMethodsCalledWithFormatArgs)
+{
+    SpyLogger spy;
+    spy.trace("trace={}", 1);
+    spy.debug("debug={}", 2);
+    spy.info("info={}", 3);
+    spy.warn("warn={}", 4);
+    spy.error("error={}", 5);
+    spy.critical("critical={}", 6);
+
+    ASSERT_EQ(spy.entries.size(), 6u);
+    EXPECT_EQ(spy.entries[0].message, "trace=1");
+    EXPECT_EQ(spy.entries[1].message, "debug=2");
+    EXPECT_EQ(spy.entries[2].message, "info=3");
+    EXPECT_EQ(spy.entries[3].message, "warn=4");
+    EXPECT_EQ(spy.entries[4].message, "error=5");
+    EXPECT_EQ(spy.entries[5].message, "critical=6");
+}
+
+TEST(ILoggerTest, AllMethodsCalledWithNoArgs)
+{
+    SpyLogger spy;
+    spy.trace("t");
+    spy.debug("d");
+    spy.info("i");
+    spy.warn("w");
+    spy.error("e");
+    spy.critical("c");
+
+    ASSERT_EQ(spy.entries.size(), 6u);
+    EXPECT_EQ(spy.entries[0].level, LogLevel::trace);
+    EXPECT_EQ(spy.entries[5].level, LogLevel::critical);
+}

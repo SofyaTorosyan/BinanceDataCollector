@@ -109,3 +109,19 @@ TEST(ParseArgumentTest, EmptyFlagListReturnsDefault)
     Args a{"app", "-c", "something.json"};
     EXPECT_EQ(parseArgument(a.argc(), a.argv(), "default.json", {}), "default.json");
 }
+
+// Long flag present at end with no following value — space form fails (i+1 >= argc),
+// then equals form is checked and also fails → returns default.
+TEST(ArgParserTest, LongFlagWithNoValueReturnsDefault)
+{
+    Args a{"app", "--config"};
+    EXPECT_EQ(parseConfigPath(a.argc(), a.argv()), "config.json");
+}
+
+// First flag in the list doesn't match; second flag (long) does via space form.
+// Exercises the inner-loop continuation across a short flag non-match.
+TEST(ParseArgumentTest, SecondFlagMatchesAfterFirstSkipped)
+{
+    Args a{"app", "--output", "out.csv"};
+    EXPECT_EQ(parseArgument(a.argc(), a.argv(), "default.csv", {"-o", "--output"}), "out.csv");
+}

@@ -3,6 +3,8 @@
 #include "ILogger.h"
 
 #include <gtest/gtest.h>
+#include <chrono>
+#include <thread>
 
 namespace
 {
@@ -23,12 +25,15 @@ std::shared_ptr<bdc::config::AppConfig> makeConfig()
 
 using bdc::network::BinanceWebSocketClient;
 
-// disconnect() before connect() must not crash even though m_ws is null
-// (exercises the `if (!m_ws) return;` branch in disconnect()).
+// disconnect() before connect() must not crash even though m_ws is null.
+// A short sleep ensures the posted lambda runs on the io thread, covering
+// the `if (!m_ws) return;` early-exit branch in the disconnect handler.
 TEST(BinanceWebSocketClientTest, DisconnectBeforeConnect_DoesNotCrash)
 {
     BinanceWebSocketClient client(makeConfig(), std::make_shared<NullLogger>());
     EXPECT_NO_THROW(client.disconnect());
+    // Let the strand execute the posted lambda before the destructor fires.
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 }
 
 // The object must be cleanly constructable and destructable without any

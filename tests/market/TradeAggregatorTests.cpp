@@ -299,4 +299,37 @@ TEST_F(TradeAggregatorTest, PopAllWindows_ReturnsOneEntryPerSymbol)
     }
 }
 
+// --- mergeBySymbol: min/max tracking across multiple windows (else branch) ---
+
+// Three completed windows for the same symbol with varying prices.
+// The mergeBySymbol else-branch must correctly update min/max when merging
+// the 2nd and 3rd windows, exercising both the "new min smaller" and
+// "new min not smaller" branches of std::min, and analogously for std::max.
+TEST_F(TradeAggregatorTest, MergeBySymbol_MinMaxTrackedAcrossWindows)
+{
+    // Window 0-1000: price 100  → initial min=100, max=100
+    // Window 1000-2000: price 200 → merge: min stays 100 (200 >= 100), max grows to 200
+    // Window 2000-3000: price 50  → merge: min shrinks to 50,  max stays 200
+    m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 0));
+    m_agg.addTrade(makeTrade("BTCUSDT", 200.0, 1.0, 1000));
+    m_agg.addTrade(makeTrade("BTCUSDT", 50.0, 1.0, 2000));
+    auto result = m_agg.popCompletedWindows(3000);
+    ASSERT_EQ(result.size(), 1u);
+    EXPECT_DOUBLE_EQ(result[0].minPrice, 50.0);
+    EXPECT_DOUBLE_EQ(result[0].maxPrice, 200.0);
+    EXPECT_EQ(result[0].trades, 3);
+}
+
+TEST_F(TradeAggregatorTest, MergeBySymbol_VolumeAndCountsAccumulate)
+{
+    m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 2.0, 0, false));    // window 0: buy, vol=200
+    m_agg.addTrade(makeTrade("BTCUSDT", 200.0, 1.0, 1000, true));  // window 1: sell, vol=200
+    auto result = m_agg.popCompletedWindows(2000);
+    ASSERT_EQ(result.size(), 1u);
+    EXPECT_DOUBLE_EQ(result[0].volume, 400.0);
+    EXPECT_EQ(result[0].buyCount, 1);
+    EXPECT_EQ(result[0].sellCount, 1);
+    EXPECT_EQ(result[0].trades, 2);
+}
+
 } // namespace

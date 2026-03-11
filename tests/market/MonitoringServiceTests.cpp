@@ -279,6 +279,22 @@ TEST_F(MonitoringServiceTest, OnMessage_EmptyString_NoTradeAddedNoThrow)
     s.service->stopMonitoring();
 }
 
+// ── stopMonitoring: without a prior startMonitoring() call ────────────────────
+
+// stopMonitoring() must work even if startMonitoring() was never called.
+// In that case m_timerThread is default-constructed (not joinable), exercising
+// the false branch of `if (m_timerThread.joinable())`.
+TEST_F(MonitoringServiceTest, StopMonitoring_WithoutStart_DoesNotCrash)
+{
+    auto svc = std::make_unique<MonitoringService>(
+        m_config, m_logger, m_mockClient, m_mockAgg, m_mockSer);
+
+    EXPECT_CALL(*m_mockClient, disconnect());
+    EXPECT_CALL(*m_mockAgg, popAllWindows()).WillOnce(Return(std::vector<WindowStats>{}));
+
+    EXPECT_NO_THROW(svc->stopMonitoring());
+}
+
 // ── stopMonitoring: disconnects and flushes remaining windows ─────────────────
 
 TEST_F(MonitoringServiceTest, StopMonitoring_CallsDisconnect)
@@ -336,6 +352,41 @@ TEST_F(MonitoringServiceTest, StopMonitoring_SerializerThrows_DoesNotPropagate)
 }
 
 // ── scheduleFlush: periodic timer fires and calls popCompletedWindows ─────────
+
+// When the serializer throws inside the timer callback the exception must be
+// caught and the service must continue running (no crash, no propagation).
+TEST_F(MonitoringServiceTest, ScheduleFlush_SerializerThrows_ExceptionCaughtInCallback)
+{
+    m_config->serializationIntervalMs = 5;
+
+    std::atomic<bool> timerThrew{false};
+    ON_CALL(*m_mockSer, write(_)).WillByDefault([&](const std::vector<WindowStats>&) {
+        timerThrew.store(true, std::memory_order_release);
+        throw std::runtime_error("write failed");
+    });
+
+    auto svc = std::make_unique<MonitoringService>(
+        m_config, m_logger, m_mockClient, m_mockAgg, m_mockSer);
+
+    EXPECT_CALL(*m_mockClient, setMessageHandler(_));
+    EXPECT_CALL(*m_mockClient, setErrorHandler(_));
+    EXPECT_CALL(*m_mockClient, connect(_, _, _));
+    EXPECT_CALL(*m_mockClient, disconnect());
+    EXPECT_CALL(*m_mockAgg, popAllWindows()).WillOnce(Return(std::vector<WindowStats>{}));
+
+    svc->startMonitoring();
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (!timerThrew.load(std::memory_order_acquire) &&
+           std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    // stopMonitoring also calls write() (which throws) — must not propagate.
+    EXPECT_NO_THROW(svc->stopMonitoring());
+    EXPECT_TRUE(timerThrew.load()) << "Timer callback never threw";
+}
 
 TEST_F(MonitoringServiceTest, ScheduleFlush_PeriodicFlush_CallsPopCompletedWindows)
 {

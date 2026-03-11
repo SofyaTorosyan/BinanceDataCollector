@@ -151,6 +151,64 @@ TEST(JsonConfigReaderTest, ThrowsOnMissingReconnectMaxDelayMs)
     EXPECT_THROW(JsonConfigReader{path}, std::runtime_error);
 }
 
+TEST(JsonConfigReaderTest, ThrowsOnMissingHost)
+{
+    auto path = writeTempFile(R"({
+        "tradingPairs": ["BTCUSDT"],
+        "port": "9443",
+        "windowMs": 3000,
+        "serializationIntervalMs": 10000,
+        "outputFile": "out.log",
+        "logLevel": "debug",
+        "reconnectMaxDelayMs": 30000
+    })");
+    EXPECT_THROW(JsonConfigReader{path}, std::runtime_error);
+}
+
+TEST(JsonConfigReaderTest, ThrowsOnMissingPort)
+{
+    auto path = writeTempFile(R"({
+        "tradingPairs": ["BTCUSDT"],
+        "host": "stream.binance.com",
+        "windowMs": 3000,
+        "serializationIntervalMs": 10000,
+        "outputFile": "out.log",
+        "logLevel": "debug",
+        "reconnectMaxDelayMs": 30000
+    })");
+    EXPECT_THROW(JsonConfigReader{path}, std::runtime_error);
+}
+
+TEST(JsonConfigReaderTest, ThrowsOnWrongTypeWindowMs)
+{
+    auto path = writeTempFile(R"({
+        "tradingPairs": ["BTCUSDT"],
+        "host": "stream.binance.com",
+        "port": "9443",
+        "windowMs": "not-a-number",
+        "serializationIntervalMs": 10000,
+        "outputFile": "out.log",
+        "logLevel": "debug",
+        "reconnectMaxDelayMs": 30000
+    })");
+    EXPECT_THROW(JsonConfigReader{path}, std::exception);
+}
+
+TEST(JsonConfigReaderTest, ThrowsOnWrongTypeTradingPairs)
+{
+    auto path = writeTempFile(R"({
+        "tradingPairs": "BTCUSDT",
+        "host": "stream.binance.com",
+        "port": "9443",
+        "windowMs": 3000,
+        "serializationIntervalMs": 10000,
+        "outputFile": "out.log",
+        "logLevel": "debug",
+        "reconnectMaxDelayMs": 30000
+    })");
+    EXPECT_THROW(JsonConfigReader{path}, std::exception);
+}
+
 TEST(JsonConfigReaderTest, LoadsEmptyTradingPairs)
 {
     auto path = writeTempFile(R"({

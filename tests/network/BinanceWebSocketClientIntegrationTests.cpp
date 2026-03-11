@@ -4,11 +4,14 @@
 #include <gtest/gtest.h>
 
 #include <atomic>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/io_context.hpp>
 #include <chrono>
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
 #include <string>
+#include <thread>
 
 namespace
 {
@@ -165,7 +168,9 @@ TEST(BinanceWebSocketClientIntegrationTest, DisconnectsCleanly)
             return received.load();
         });
 
+    // Let the disconnect lambda execute on the io thread before the destructor fires.
     EXPECT_NO_THROW(client.disconnect());
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 // Connects to a hostname that does not exist and verifies the error handler is
@@ -231,6 +236,99 @@ TEST(BinanceWebSocketClientIntegrationTest, ConnectToClosedPort_CallsErrorHandle
             return errorReceived.load();
         }))
         << "Timed out waiting for TCP connect error";
+
+    client.disconnect();
+}
+
+// Opens a local plain-TCP server that accepts one connection then closes the
+// socket immediately — this causes the SSL handshake inside
+// BinanceWebSocketClient to fail, exercising onSslHandshake(ec != ok).
+TEST(BinanceWebSocketClientIntegrationTest, SslHandshakeFailure_CallsErrorHandler)
+{
+    namespace net = boost::asio;
+    using tcp     = net::ip::tcp;
+
+    net::io_context serverIoc;
+    tcp::acceptor   acceptor(serverIoc, tcp::endpoint(tcp::v4(), 0));
+    const auto      serverPort = std::to_string(acceptor.local_endpoint().port());
+
+    // Accept exactly one connection then close it — no TLS, so the client's
+    // SSL handshake will fail immediately.
+    acceptor.async_accept(
+        [](boost::system::error_code, tcp::socket sock)
+        {
+            boost::system::error_code ec;
+            // Send garbage so the TLS layer sees bad data and errors out.
+            const char garbage[] = "\x00\xFF\x00\xFF";
+            sock.write_some(net::buffer(garbage, sizeof(garbage) - 1), ec);
+            sock.shutdown(tcp::socket::shutdown_both, ec);
+        });
+
+    std::thread serverThread([&] { serverIoc.run(); });
+
+    std::atomic<bool>       errorReceived{false};
+    std::mutex              mtx;
+    std::condition_variable cv;
+
+    BinanceWebSocketClient client(makeConfig(), std::make_shared<NullLogger>());
+    client.setErrorHandler(
+        [&](const std::string&)
+        {
+            if (!errorReceived.exchange(true))
+            {
+                std::lock_guard lk(mtx);
+                cv.notify_one();
+            }
+        });
+
+    client.connect("127.0.0.1", serverPort, "/test");
+
+    EXPECT_TRUE(waitFor(
+        mtx,
+        cv,
+        [&]
+        {
+            return errorReceived.load();
+        }))
+        << "Timed out waiting for SSL handshake error";
+
+    client.disconnect();
+    serverIoc.stop();
+    serverThread.join();
+}
+
+// Connects to a real HTTPS server that doesn't speak WebSocket. The TLS
+// handshake succeeds (valid cert), but the WebSocket upgrade is rejected,
+// exercising the onWsHandshake(ec != ok) error branch.
+TEST(BinanceWebSocketClientIntegrationTest, WsHandshakeFailure_CallsErrorHandler)
+{
+    std::atomic<bool>       errorReceived{false};
+    std::mutex              mtx;
+    std::condition_variable cv;
+
+    BinanceWebSocketClient client(makeConfig(), std::make_shared<NullLogger>());
+    client.setErrorHandler(
+        [&](const std::string&)
+        {
+            if (!errorReceived.exchange(true))
+            {
+                std::lock_guard lk(mtx);
+                cv.notify_one();
+            }
+        });
+
+    // google.com serves HTTPS (valid cert) but does not upgrade to WebSocket.
+    // The WS upgrade request will be rejected, triggering the error handler.
+    client.connect("google.com", "443", "/");
+
+    EXPECT_TRUE(waitFor(
+        mtx,
+        cv,
+        [&]
+        {
+            return errorReceived.load();
+        }))
+        << "Timed out waiting for WS handshake error from google.com";
 
     client.disconnect();
 }
