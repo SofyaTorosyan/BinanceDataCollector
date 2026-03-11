@@ -433,16 +433,20 @@ TEST_F(MonitoringServiceTest, ScheduleFlush_SerializerThrows_ExceptionCaughtInCa
         throw std::runtime_error("write failed");
     });
 
+    IWebSocketClient::MessageHandler capturedOnMessage;
     auto svc = std::make_unique<MonitoringService>(
         m_config, m_logger, m_mockClient, m_mockAgg, m_mockSer);
 
-    EXPECT_CALL(*m_mockClient, setMessageHandler(_));
+    EXPECT_CALL(*m_mockClient, setMessageHandler(_)).WillOnce(SaveArg<0>(&capturedOnMessage));
     EXPECT_CALL(*m_mockClient, setErrorHandler(_));
     EXPECT_CALL(*m_mockClient, connect(_, _, _));
     EXPECT_CALL(*m_mockClient, disconnect());
     EXPECT_CALL(*m_mockAgg, popAllWindows()).WillOnce(Return(std::vector<WindowStats>{}));
 
     svc->startMonitoring();
+
+    // Inject a trade to set m_latestExchangeTimeMs so the flush callback will fire.
+    capturedOnMessage(R"({"s":"BTCUSDT","p":"43000.0","q":"0.1","T":1700000000000,"m":false})");
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
     while (!timerThrew.load(std::memory_order_acquire) &&
@@ -467,16 +471,20 @@ TEST_F(MonitoringServiceTest, ScheduleFlush_PeriodicFlush_CallsPopCompletedWindo
             return {};
         });
 
+    IWebSocketClient::MessageHandler capturedOnMessage;
     auto svc = std::make_unique<MonitoringService>(
         m_config, m_logger, m_mockClient, m_mockAgg, m_mockSer);
 
-    EXPECT_CALL(*m_mockClient, setMessageHandler(_));
+    EXPECT_CALL(*m_mockClient, setMessageHandler(_)).WillOnce(SaveArg<0>(&capturedOnMessage));
     EXPECT_CALL(*m_mockClient, setErrorHandler(_));
     EXPECT_CALL(*m_mockClient, connect(_, _, _));
     EXPECT_CALL(*m_mockClient, disconnect());
     EXPECT_CALL(*m_mockAgg, popAllWindows()).WillOnce(Return(std::vector<WindowStats>{}));
 
     svc->startMonitoring();
+
+    // Inject a trade to set m_latestExchangeTimeMs; the flush will use this timestamp.
+    capturedOnMessage(R"({"s":"BTCUSDT","p":"43000.0","q":"0.1","T":1700000000000,"m":false})");
 
     // Wait up to 2 s for the timer callback to fire at least once.
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);

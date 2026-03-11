@@ -7,6 +7,7 @@
 #include "ISerializer.h"
 #include "IWebSocketClient.h"
 #include "TradeEvent.h"
+#include <atomic>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <memory>
@@ -44,6 +45,7 @@ private:
     boost::asio::io_context m_timerIoc;
     boost::asio::steady_timer m_timer;
     std::thread m_timerThread;
+    std::atomic<int64_t> m_latestExchangeTimeMs{0};
 };
 
 } // namespace bdc::market

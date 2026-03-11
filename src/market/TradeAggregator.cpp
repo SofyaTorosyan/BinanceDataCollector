@@ -1,5 +1,4 @@
 #include "TradeAggregator.h"
-#include <algorithm>
 
 namespace bdc::market
 {
@@ -53,7 +52,7 @@ std::vector<bdc::serialization::WindowStats> TradeAggregator::popCompletedWindow
             ++it;
         }
     }
-    return mergeBySymbol(std::move(completed));
+    return completed;
 }
 
 std::vector<bdc::serialization::WindowStats> TradeAggregator::popAllWindows()
@@ -66,40 +65,7 @@ std::vector<bdc::serialization::WindowStats> TradeAggregator::popAllWindows()
         all.push_back(std::move(stats));
     }
     m_windows.clear();
-    return mergeBySymbol(std::move(all));
-}
-
-std::vector<bdc::serialization::WindowStats> TradeAggregator::mergeBySymbol(
-    std::vector<bdc::serialization::WindowStats> windows)
-{
-    std::map<std::string, bdc::serialization::WindowStats> merged;
-    for (auto& w : windows)
-    {
-        auto& agg = merged[w.symbol];
-        if (agg.trades == 0)
-        {
-            agg.symbol = w.symbol;
-            agg.minPrice = w.minPrice;
-            agg.maxPrice = w.maxPrice;
-        }
-        else
-        {
-            agg.minPrice = std::min(agg.minPrice, w.minPrice);
-            agg.maxPrice = std::max(agg.maxPrice, w.maxPrice);
-        }
-        agg.trades += w.trades;
-        agg.volume += w.volume;
-        agg.buyCount += w.buyCount;
-        agg.sellCount += w.sellCount;
-    }
-
-    std::vector<bdc::serialization::WindowStats> result;
-    result.reserve(merged.size());
-    for (auto& [sym, s] : merged)
-    {
-        result.push_back(std::move(s));
-    }
-    return result;
+    return all;
 }
 
 } // namespace bdc::market

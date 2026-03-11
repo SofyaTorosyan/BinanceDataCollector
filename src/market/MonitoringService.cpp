@@ -72,17 +72,20 @@ void MonitoringService::scheduleFlush()
         [this](const boost::system::error_code& ec)
         {
             if (ec)
+            {
                 return;
-            const auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                   std::chrono::system_clock::now().time_since_epoch())
-                                   .count();
-            try
-            {
-                m_serializer->write(m_aggregator->popCompletedWindows(nowMs));
             }
-            catch (const std::exception& e)
+            const auto nowMs = m_latestExchangeTimeMs.load(std::memory_order_acquire);
+            if (nowMs > 0)
             {
-                m_logger->error("Serialization error: {}", e.what());
+                try
+                {
+                    m_serializer->write(m_aggregator->popCompletedWindows(nowMs));
+                }
+                catch (const std::exception& e)
+                {
+                    m_logger->error("Serialization error: {}", e.what());
+                }
             }
             scheduleFlush();
         });
@@ -100,6 +103,7 @@ void MonitoringService::onMessage(const std::string& jsonMessage)
 
     const auto& tradeEvent = tradeEventOpt.value();
     m_aggregator->addTrade(tradeEvent);
+    m_latestExchangeTimeMs.store(tradeEvent.tradeTimeMs, std::memory_order_release);
 }
 
 void MonitoringService::onError(const std::string& error)

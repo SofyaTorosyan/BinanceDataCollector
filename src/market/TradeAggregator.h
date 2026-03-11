@@ -31,9 +31,6 @@ private:
         }
     };
 
-    static std::vector<bdc::serialization::WindowStats>
-    mergeBySymbol(std::vector<bdc::serialization::WindowStats> windows);
-
     config::AppConfigPtr m_appConfig;
     std::map<WindowKey, bdc::serialization::WindowStats> m_windows;
     std::mutex m_mutex;
