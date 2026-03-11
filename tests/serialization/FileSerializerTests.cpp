@@ -89,7 +89,8 @@ TEST_F(FileSerializerTest, WriteSingleWindow_ProducesCorrectFormat)
     s.write({w});
 
     const std::string output = readFile();
-    EXPECT_NE(output.find("timestamp=2021-01-01T00:00:00Z"), std::string::npos);
+    // Timestamp is now hardware wall-clock time — just verify the header is present.
+    EXPECT_NE(output.find("timestamp="), std::string::npos);
     EXPECT_NE(output.find("symbol=BTCUSDT"), std::string::npos);
     EXPECT_NE(output.find("trades=5"), std::string::npos);
     EXPECT_NE(output.find("volume=1.2345"), std::string::npos);
@@ -118,22 +119,23 @@ TEST_F(FileSerializerTest, WriteMultipleSymbolsSameTimestamp_AllUnderOneTimestam
     EXPECT_NE(output.find("symbol=ETHUSDT"), std::string::npos);
 }
 
-TEST_F(FileSerializerTest, WriteMultipleTimestamps_SortedAscending)
+TEST_F(FileSerializerTest, WriteMultipleEntries_OneTimestampHeader)
 {
     FileSerializer s(makeConfig(m_tempFile.string()));
-    // Intentionally out of order
+    // Serializer receives pre-merged data (one entry per symbol) from the aggregator.
     std::vector<WindowStats> windows = {
-        makeWindow("BTCUSDT", 2000, 1, 1.0, 100.0, 200.0, 1, 0),
-        makeWindow("BTCUSDT", 1000, 1, 1.0, 100.0, 200.0, 1, 0),
+        makeWindow("BTCUSDT", 0, 5, 3.5, 100.0, 200.0, 3, 2),
+        makeWindow("ETHUSDT", 0, 2, 1.0, 1800.0, 1900.0, 1, 1),
     };
     s.write(windows);
 
     const std::string output = readFile();
-    const auto pos1 = output.find("timestamp=1970-01-01T00:00:01Z");
-    const auto pos2 = output.find("timestamp=1970-01-01T00:00:02Z");
-    EXPECT_NE(pos1, std::string::npos);
-    EXPECT_NE(pos2, std::string::npos);
-    EXPECT_LT(pos1, pos2);
+    // Exactly one timestamp header for the whole flush.
+    const auto firstPos = output.find("timestamp=");
+    EXPECT_NE(firstPos, std::string::npos);
+    EXPECT_EQ(output.find("timestamp=", firstPos + 1), std::string::npos);
+    EXPECT_NE(output.find("symbol=BTCUSDT"), std::string::npos);
+    EXPECT_NE(output.find("symbol=ETHUSDT"), std::string::npos);
 }
 
 TEST_F(FileSerializerTest, WriteAppendsToExistingFile)

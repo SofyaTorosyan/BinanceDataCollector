@@ -28,8 +28,7 @@ namespace
 constexpr auto logName = "app"s;
 } // namespace
 
-App::App(int argc, char** argv)
-    : m_configFile{parseConfigPath(argc, argv)}
+App::App(int argc, char** argv) : m_configFile{parseConfigPath(argc, argv)}
 {
 }
 
@@ -56,6 +55,8 @@ void App::run()
         m_monitoringService = injector.create<std::shared_ptr<market::IMonitoringService>>();
 
         m_monitoringService->startMonitoring();
+
+        m_logger->info("Application config loaded from {}", m_configFile);
 
         m_logger->info("Application started successfully.");
 

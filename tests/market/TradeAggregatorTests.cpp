@@ -79,11 +79,12 @@ TEST_F(TradeAggregatorTest, TradesInSameWindowMerge)
 
 TEST_F(TradeAggregatorTest, TradesInDifferentWindowsAreDistinct)
 {
+    // At nowMs=1000 only the first window [0,1000) is complete; the second [1000,2000) is not.
     m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 0));
     m_agg.addTrade(makeTrade("BTCUSDT", 200.0, 1.0, 1000));
     auto result = m_agg.popCompletedWindows(1000);
     ASSERT_EQ(result.size(), 1u);
-    EXPECT_EQ(result[0].windowStartMs, 0);
+    EXPECT_EQ(result[0].trades, 1);
 }
 
 TEST_F(TradeAggregatorTest, SecondWindowReturnedAfterItsCompletion)
@@ -93,18 +94,18 @@ TEST_F(TradeAggregatorTest, SecondWindowReturnedAfterItsCompletion)
     m_agg.popCompletedWindows(1000);
     auto result = m_agg.popCompletedWindows(2000);
     ASSERT_EQ(result.size(), 1u);
-    EXPECT_EQ(result[0].windowStartMs, 1000);
+    EXPECT_EQ(result[0].trades, 1);
+    EXPECT_DOUBLE_EQ(result[0].minPrice, 200.0);
 }
 
 // --- addTrade: field accumulation ---
 
-TEST_F(TradeAggregatorTest, SymbolAndWindowStartSetCorrectly)
+TEST_F(TradeAggregatorTest, SymbolSetCorrectly)
 {
     m_agg.addTrade(makeTrade("ETHUSDT", 1800.0, 0.5, 2500));
     auto result = m_agg.popCompletedWindows(3000);
     ASSERT_EQ(result.size(), 1u);
     EXPECT_EQ(result[0].symbol, "ETHUSDT");
-    EXPECT_EQ(result[0].windowStartMs, 2000);
 }
 
 TEST_F(TradeAggregatorTest, TradesCountAccumulates)
@@ -232,23 +233,25 @@ TEST_F(TradeAggregatorTest, DifferentSymbols_TradesCountedIndependently)
 
 // --- window boundary arithmetic ---
 
-TEST_F(TradeAggregatorTest, WindowStartComputedByTruncation)
+TEST_F(TradeAggregatorTest, WindowBoundaryRespected_TradeInWindowIncludedWhenComplete)
 {
-    // tradeTimeMs=1999, windowMs=1000 → windowStart = (1999/1000)*1000 = 1000
+    // tradeTimeMs=1999 belongs to window [1000,2000); complete at nowMs=2000 but not 1999.
     m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 1999));
+    EXPECT_TRUE(m_agg.popCompletedWindows(1999).empty());
     auto result = m_agg.popCompletedWindows(2000);
     ASSERT_EQ(result.size(), 1u);
-    EXPECT_EQ(result[0].windowStartMs, 1000);
+    EXPECT_EQ(result[0].symbol, "BTCUSDT");
 }
 
-TEST_F(TradeAggregatorTest, MultipleCompletedWindowsReturnedAtOnce)
+TEST_F(TradeAggregatorTest, MultipleCompletedWindowsMergedPerSymbol)
 {
     m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 0));
     m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 1000));
     m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 2000));
-    // At nowMs=3000 all three windows are complete
+    // Three completed windows for BTCUSDT → merged into one result entry.
     auto result = m_agg.popCompletedWindows(3000);
-    ASSERT_EQ(result.size(), 3u);
+    ASSERT_EQ(result.size(), 1u);
+    EXPECT_EQ(result[0].trades, 3);
 }
 
 // --- popAllWindows ---
@@ -275,13 +278,25 @@ TEST_F(TradeAggregatorTest, PopAllWindows_ClearsAggregator)
     EXPECT_TRUE(m_agg.popCompletedWindows(99999).empty());
 }
 
-TEST_F(TradeAggregatorTest, PopAllWindows_ReturnsAllSymbolsAndWindows)
+TEST_F(TradeAggregatorTest, PopAllWindows_ReturnsOneEntryPerSymbol)
 {
     m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 0));
-    m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 1000)); // second window
+    m_agg.addTrade(makeTrade("BTCUSDT", 100.0, 1.0, 1000)); // second window, same symbol
     m_agg.addTrade(makeTrade("ETHUSDT", 200.0, 1.0, 0));
     auto result = m_agg.popAllWindows();
-    EXPECT_EQ(result.size(), 3u);
+    // Two BTCUSDT windows + one ETHUSDT window → merged into 2 entries.
+    ASSERT_EQ(result.size(), 2u);
+    for (const auto& w : result)
+    {
+        if (w.symbol == "BTCUSDT")
+        {
+            EXPECT_EQ(w.trades, 2);
+        }
+        if (w.symbol == "ETHUSDT")
+        {
+            EXPECT_EQ(w.trades, 1);
+        }
+    }
 }
 
 } // namespace

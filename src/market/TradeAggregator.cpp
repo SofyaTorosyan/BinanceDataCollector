@@ -38,14 +38,14 @@ void TradeAggregator::addTrade(const TradeEvent& event)
 
 std::vector<bdc::serialization::WindowStats> TradeAggregator::popCompletedWindows(int64_t nowMs)
 {
-    std::vector<bdc::serialization::WindowStats> result;
+    std::vector<bdc::serialization::WindowStats> completed;
     std::lock_guard<std::mutex> lock(m_mutex);
 
     for (auto it = m_windows.begin(); it != m_windows.end();)
     {
         if (it->first.windowStartMs + m_appConfig->windowMs <= nowMs)
         {
-            result.push_back(it->second);
+            completed.push_back(it->second);
             it = m_windows.erase(it);
         }
         else
@@ -53,17 +53,52 @@ std::vector<bdc::serialization::WindowStats> TradeAggregator::popCompletedWindow
             ++it;
         }
     }
-    return result;
+    return mergeBySymbol(std::move(completed));
 }
 
 std::vector<bdc::serialization::WindowStats> TradeAggregator::popAllWindows()
 {
+    std::vector<bdc::serialization::WindowStats> all;
     std::lock_guard<std::mutex> lock(m_mutex);
-    std::vector<bdc::serialization::WindowStats> result;
-    result.reserve(m_windows.size());
+    all.reserve(m_windows.size());
     for (auto& [key, stats] : m_windows)
-        result.push_back(std::move(stats));
+    {
+        all.push_back(std::move(stats));
+    }
     m_windows.clear();
+    return mergeBySymbol(std::move(all));
+}
+
+std::vector<bdc::serialization::WindowStats> TradeAggregator::mergeBySymbol(
+    std::vector<bdc::serialization::WindowStats> windows)
+{
+    std::map<std::string, bdc::serialization::WindowStats> merged;
+    for (auto& w : windows)
+    {
+        auto& agg = merged[w.symbol];
+        if (agg.trades == 0)
+        {
+            agg.symbol = w.symbol;
+            agg.minPrice = w.minPrice;
+            agg.maxPrice = w.maxPrice;
+        }
+        else
+        {
+            agg.minPrice = std::min(agg.minPrice, w.minPrice);
+            agg.maxPrice = std::max(agg.maxPrice, w.maxPrice);
+        }
+        agg.trades += w.trades;
+        agg.volume += w.volume;
+        agg.buyCount += w.buyCount;
+        agg.sellCount += w.sellCount;
+    }
+
+    std::vector<bdc::serialization::WindowStats> result;
+    result.reserve(merged.size());
+    for (auto& [sym, s] : merged)
+    {
+        result.push_back(std::move(s));
+    }
     return result;
 }
 

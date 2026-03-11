@@ -1,8 +1,8 @@
 #include "FileSerializer.h"
+#include <algorithm>
 #include <chrono>
 #include <format>
 #include <fstream>
-#include <map>
 #include <stdexcept>
 
 namespace bdc::serialization
@@ -27,25 +27,20 @@ FileSerializer::FileSerializer(config::AppConfigPtr config) : m_config{std::move
 
 void FileSerializer::write(const std::vector<WindowStats>& windows)
 {
-    if (windows.empty())
-    {
-        return;
-    }
-
-    // Group by windowStartMs, preserving insertion order for symbols within a group
-    std::map<int64_t, std::vector<const WindowStats*>> grouped;
-    for (const auto& w : windows)
-    {
-        if (w.trades > 0)
+    const bool hasData = std::any_of(
+        windows.begin(),
+        windows.end(),
+        [](const WindowStats& w)
         {
-            grouped[w.windowStartMs].push_back(&w);
-        }
-    }
-
-    if (grouped.empty())
-    {
+            return w.trades > 0;
+        });
+    if (!hasData)
         return;
-    }
+
+    // Use hardware wall-clock time as the flush timestamp.
+    const auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                           std::chrono::system_clock::now().time_since_epoch())
+                           .count();
 
     std::ofstream file(m_config->outputFile, std::ios::app);
     if (!file.is_open())
@@ -54,21 +49,22 @@ void FileSerializer::write(const std::vector<WindowStats>& windows)
     }
     file.exceptions(std::ios::failbit | std::ios::badbit);
 
-    for (const auto& [ts, stats] : grouped)
+    file << std::format("timestamp={}\n", formatTimestampUtc(nowMs));
+    for (const auto& s : windows)
     {
-        file << std::format("timestamp={}\n", formatTimestampUtc(ts));
-        for (const auto* s : stats)
+        if (s.trades == 0)
         {
-            file << std::format(
-                "symbol={} trades={} volume={:.4f} min={:.4f} max={:.4f} buy={} sell={}\n",
-                s->symbol,
-                s->trades,
-                s->volume,
-                s->minPrice,
-                s->maxPrice,
-                s->buyCount,
-                s->sellCount);
+            continue;
         }
+        file << std::format(
+            "symbol={} trades={} volume={:.4f} min={:.4f} max={:.4f} buy={} sell={}\n",
+            s.symbol,
+            s.trades,
+            s.volume,
+            s.minPrice,
+            s.maxPrice,
+            s.buyCount,
+            s.sellCount);
     }
 }
 
