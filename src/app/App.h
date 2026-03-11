@@ -2,6 +2,7 @@
 
 #include "ILogger.h"
 #include "IMonitoringService.h"
+#include <string>
 
 namespace bdc::app
 {
@@ -9,7 +10,7 @@ namespace bdc::app
 class App
 {
 public:
-    App();
+    App(int argc, char** argv);
     ~App();
 
     void run();
@@ -17,6 +18,7 @@ public:
 private:
     void keepRunningUntilSignal();
 
+    std::string m_configFile;
     logging::ILoggerPtr m_logger;
     market::IMonitoringServicePtr m_monitoringService;
 };

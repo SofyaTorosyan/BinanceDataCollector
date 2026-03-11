@@ -21,6 +21,30 @@ cmake -S . --preset conan-release
 cmake --build build --preset conan-release
 ```
 
+## Usage
+
+```bash
+BinanceDataCollector [OPTIONS]
+```
+
+| Option | Description |
+|--------|-------------|
+| `-c <path>`, `--config <path>`, `--config=<path>` | Path to the JSON config file. Defaults to `config.json` in the working directory. |
+
+**Examples:**
+
+```bash
+# Use default config.json in the current directory
+./BinanceDataCollector
+
+# Provide a custom config path
+./BinanceDataCollector -c /etc/bdc/production.json
+./BinanceDataCollector --config /etc/bdc/production.json
+./BinanceDataCollector --config=/etc/bdc/production.json
+```
+
+---
+
 ## Code Coverage
 
 Requires `lcov`:

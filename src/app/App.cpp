@@ -1,4 +1,5 @@
 #include "App.h"
+#include "ArgParser.h"
 
 #include <iostream>
 
@@ -20,14 +21,15 @@ namespace bdc::app
 {
 
 using namespace std::string_literals;
+using namespace std::string_view_literals;
 
 namespace
 {
-constexpr auto ConfigFileName = "config.json"s;
 constexpr auto logName = "app"s;
 } // namespace
 
-App::App()
+App::App(int argc, char** argv)
+    : m_configFile{parseConfigPath(argc, argv)}
 {
 }
 
@@ -37,7 +39,7 @@ void App::run()
 {
     try
     {
-        auto configReader = std::make_shared<config::JsonConfigReader>(ConfigFileName);
+        auto configReader = std::make_shared<config::JsonConfigReader>(m_configFile);
         auto appConfig = std::make_shared<config::AppConfig>(configReader->getConfig());
         auto logger = std::make_shared<logging::SpdlogLogger>(
             logName, logging::fromString(appConfig->logLevel));

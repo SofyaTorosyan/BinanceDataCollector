@@ -5,6 +5,7 @@ project(BinanceTests)
 find_package(GTest REQUIRED)
 
 add_executable(${PROJECT_NAME}
+    app/ArgParserTests.cpp
     config/ConfigLoaderTests.cpp
     logging/LoggerTests.cpp
     market/MonitoringServiceTests.cpp
@@ -21,6 +22,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     lib-market
     lib-network
     lib-serialization
+)
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/app
 )
 
 include(GoogleTest)

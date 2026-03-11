@@ -1,11 +1,11 @@
 #include "App.h"
 #include <iostream>
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
     try
     {
-        bdc::app::App app;
+        bdc::app::App app{argc, argv};
         app.run();
     }
     catch (const std::exception& e)
